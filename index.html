@@ -4,22 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>氨基酸分子拼装</title>
+<link rel="stylesheet" href="css/base.css">
 </head>
 <body>
 
 <header>
   <h1>氨基酸分子拼装</h1>
+  <p class="subtitle">把左边的积木拖到骨架的空位上，点一下已放入的积木可以取下。</p>
 </header>
 
 <main>
   <aside id="palette" aria-label="积木面板">
     <h2>积木</h2>
+    <div class="chip-list" id="chip-list"></div>
   </aside>
+
   <section id="canvas" aria-label="拼装画布">
     <h2>骨架</h2>
+    <div class="scaffold" id="scaffold">
+      <div class="slot" data-slot="amino" data-drop-target="slot">
+        <span class="slot-hint">氨基</span>
+      </div>
+      <div class="slot" data-slot="hydrogen" data-drop-target="slot">
+        <span class="slot-hint">氢</span>
+      </div>
+      <div class="slot" data-slot="carboxyl" data-drop-target="slot">
+        <span class="slot-hint">羧基</span>
+      </div>
+      <div class="slot" data-slot="sideChain" data-drop-target="slot">
+        <span class="slot-hint">R 基</span>
+      </div>
+      <div class="ca-badge" aria-hidden="true">Cα</div>
+    </div>
   </section>
+
   <aside id="info" aria-label="性质说明">
     <h2>性质</h2>
+    <p class="placeholder">拼装完成后在这里显示性质。</p>
   </aside>
 </main>
 
@@ -30,6 +51,8 @@
 <script src="js/data.js"></script>
 <script src="js/graph.js"></script>
 <script src="js/canonical.js"></script>
+<script src="js/drag.js"></script>
+<script src="js/app.js"></script>
 
 </body>
 </html>

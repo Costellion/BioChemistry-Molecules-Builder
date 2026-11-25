@@ -1,0 +1,243 @@
+:root {
+  --bg: #f4f6fb;
+  --panel: #ffffff;
+  --line: #d9dde8;
+  --ink: #1f2430;
+  --muted: #6b7280;
+  --accent: #2f6feb;
+  --accent-soft: #e9f0ff;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+header {
+  padding: 20px 24px 6px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 240px;
+  gap: 16px;
+  align-items: start;
+  padding: 12px 24px 24px;
+}
+
+aside,
+#canvas {
+  min-height: 340px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+/* ---- 积木 ---- */
+
+.chip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 10px rgba(47, 111, 235, 0.12);
+}
+
+.chip:active {
+  cursor: grabbing;
+}
+
+.chip .name {
+  font-size: 14px;
+}
+
+.chip .formula {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chip.is-dragging {
+  opacity: 0.35;
+}
+
+/* 拖拽影像：固定定位 + transform，避免触发重排；pointer-events 关掉，
+   这样 elementFromPoint 才能命中它底下的槽位。 */
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 12px 26px rgba(20, 26, 40, 0.22);
+}
+
+/* ---- 骨架 ---- */
+
+.scaffold {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  max-width: 520px;
+  margin: 10px auto;
+  padding: 4px;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84px;
+  padding: 8px;
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+  background: #fbfcfe;
+  font-size: 13px;
+  color: var(--muted);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.slot.is-drop-target {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.slot.is-occupied {
+  border-style: solid;
+  border-color: var(--line);
+  background: #fff;
+}
+
+.slot.is-occupied .slot-hint {
+  display: none;
+}
+
+.slot .chip {
+  width: 100%;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ca-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 46px;
+  height: 46px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+/* 放入槽位时的一下轻微弹入 */
+.chip.is-placed {
+  animation: pop 0.18s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.88);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.placeholder {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+footer {
+  padding: 0 24px 18px;
+}
+
+#message {
+  display: block;
+  min-height: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+
+  aside,
+  #canvas {
+    min-height: auto;
+  }
+
+  .scaffold {
+    gap: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip.is-placed {
+    animation: none;
+  }
+}

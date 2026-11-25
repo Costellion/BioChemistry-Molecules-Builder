@@ -27,6 +27,20 @@
       used[a.id] = 0;
       neighbours[a.id] = [];
     });
+
+    var centre = { x: 0, y: 0 };
+    var counted = 0;
+    graph.atoms.forEach(function (a) {
+      var p = points[a.id];
+      if (!p) return;
+      centre.x += p.x;
+      centre.y += p.y;
+      counted += 1;
+    });
+    if (counted) {
+      centre.x /= counted;
+      centre.y /= counted;
+    }
     graph.bonds.forEach(function (b) {
       used[b.a] += b.order;
       used[b.b] += b.order;
@@ -64,33 +78,31 @@
         if (!occupied) candidates.push(angle);
       }
 
-      // 先从候选方向里挑不撞到其它原子的，挑不满才退而求其次
-      var accepted = [];
-      var radius = bondLength * 0.9;
-      candidates.forEach(function (angle) {
-        if (accepted.length >= free) return;
+      // 按"离其它原子越远越好、越朝外越好"打分，取前 free 个方向
+      var radius = bondLength * 0.88;
+      var scored = candidates.map(function (angle) {
         var px = base.x + Math.cos(angle) * radius;
         var py = base.y + Math.sin(angle) * radius;
-        var clear = graph.atoms.every(function (other) {
+        var nearest = Infinity;
+
+        graph.atoms.forEach(function (other) {
+          if (other.id === a.id) return;
           var p = points[other.id];
-          if (!p) return true;
-          if (other.id === a.id) return true;
+          if (!p) return;
           var dist = Math.sqrt((p.x - px) * (p.x - px) + (p.y - py) * (p.y - py));
-          return dist > bondLength * 0.62;
+          if (dist < nearest) nearest = dist;
         });
-        if (clear) accepted.push({ angle: angle, x: px, y: py });
-      });
-      candidates.forEach(function (angle) {
-        if (accepted.length >= free) return;
-        if (accepted.some(function (s) { return s.angle === angle; })) return;
-        accepted.push({
-          angle: angle,
-          x: base.x + Math.cos(angle) * radius,
-          y: base.y + Math.sin(angle) * radius
-        });
+        if (!isFinite(nearest)) nearest = bondLength * 2;
+
+        var outward = Math.sqrt(
+          (px - centre.x) * (px - centre.x) + (py - centre.y) * (py - centre.y)
+        );
+
+        return { x: px, y: py, score: nearest + outward * 0.4 };
       });
 
-      accepted.forEach(function (site) {
+      scored.sort(function (u, v) { return v.score - u.score; });
+      scored.slice(0, free).forEach(function (site) {
         sites.push({ x: site.x, y: site.y, fromX: base.x, fromY: base.y });
       });
     });
@@ -298,7 +310,10 @@
     var element = {};
     fragment.atoms.forEach(function (a) { element[a.id] = a.el; });
 
-    var margin = opts.hydrogens === false ? 0 : 12;
+    // 氢画在 0.88 倍键长处，画布必须留出这段余量，否则最外圈的氢会被裁掉
+    var margin = opts.hydrogens === false
+      ? 0
+      : Math.round(opts.bond * 0.88 + 10);
     var width = placed.width + opts.stub + margin * 2;
     var height = placed.height + margin * 2;
     var parts = [];

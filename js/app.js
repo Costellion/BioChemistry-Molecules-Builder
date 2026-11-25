@@ -82,7 +82,7 @@
     var slotId = slot.getAttribute('data-slot');
 
     if (!accepts(slotId, chip)) {
-      say(slotName(slot) + '不能放这个。' + slotName(slot) + '只接受对应的基团。');
+      say(slotName(slot) + '不能放这个，只接受对应的基团。');
       return false;
     }
     if (slot.classList.contains('is-occupied')) {
@@ -90,20 +90,20 @@
       return false;
     }
 
+    var key = chip.getAttribute('data-key');
     var placed = createChip({
       kind: chip.getAttribute('data-kind'),
-      slot: chip.getAttribute('data-key'),
-      id: chip.getAttribute('data-key'),
+      slot: key,
+      id: key,
       name: chip.querySelector('.name').textContent,
       formula: chip.querySelector('.formula').textContent
     });
     placed.classList.add('is-placed');
-    placed.setAttribute('data-source', chip.getAttribute('data-key'));
     placed.setAttribute('title', '点击取下');
 
     slot.appendChild(placed);
     slot.classList.add('is-occupied');
-    state[slotId] = chip.getAttribute('data-key');
+    state[slotId] = key;
 
     refresh(slotName(slot));
     return true;
@@ -119,16 +119,6 @@
       state[slot.getAttribute('data-slot')] = null;
       refresh(null);
     });
-  }
-
-  function structureBox() {
-    var box = document.getElementById('structure');
-    return box;
-  }
-
-  function clearStructure() {
-    var box = structureBox();
-    if (box) box.innerHTML = '';
   }
 
   function showInfo(aa) {
@@ -169,18 +159,79 @@
     box.appendChild(note);
   }
 
+  function hideModal() {
+    var modal = document.getElementById('modal');
+    if (!modal || modal.hidden) return;
+    modal.hidden = true;
+    document.body.classList.remove('modal-open');
+  }
+
+  function showModal(aa, graph) {
+    var modal = document.getElementById('modal');
+    if (!modal) return;
+
+    document.getElementById('modal-title').textContent = aa.zh;
+    document.getElementById('modal-sub').textContent =
+      aa.en + '　' + aa.abbr3 + ' / ' + aa.abbr1 + '　' + DATA.categories[aa.category].label;
+
+    document.getElementById('modal-figure').innerHTML =
+      '<img class="figure" src="img/' + aa.id + '.png" alt="' + aa.zh + '的结构式">';
+
+    var props = document.getElementById('modal-props');
+    props.innerHTML = '';
+    [
+      ['分子式', aa.formula],
+      ['等电点', aa.pI.toFixed(2)],
+      ['疏水指数', aa.hydropathy.toFixed(2)],
+      ['亲疏水', aa.solubility],
+      ['必需性', aa.essential]
+    ].forEach(function (row) {
+      var dt = document.createElement('dt');
+      dt.textContent = row[0];
+      var dd = document.createElement('dd');
+      dd.textContent = row[1];
+      props.appendChild(dt);
+      props.appendChild(dd);
+    });
+
+    document.getElementById('modal-note').textContent = aa.note;
+
+    modal.hidden = false;
+    document.body.classList.add('modal-open');
+    var close = document.getElementById('modal-close');
+    if (close) close.focus();
+  }
+
+  function bindModal() {
+    var modal = document.getElementById('modal');
+    if (!modal) return;
+
+    var close = document.getElementById('modal-close');
+    if (close) close.addEventListener('click', hideModal);
+
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) hideModal();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !modal.hidden) hideModal();
+    });
+  }
+
   function refresh(lastSlot) {
     var complete = state.amino && state.carboxyl && state.hydrogen && state.sideChain;
 
     if (!complete) {
-      clearStructure();
-      var box = document.getElementById('info');
-      if (box) {
-        box.innerHTML = '';
+      var box0 = document.getElementById('structure');
+      if (box0) box0.innerHTML = '';
+
+      var info0 = document.getElementById('info');
+      if (info0) {
+        info0.innerHTML = '';
         var tip = document.createElement('p');
         tip.className = 'placeholder';
         tip.textContent = '四个槽位都放对，就拼出一个完整的氨基酸。';
-        box.appendChild(tip);
+        info0.appendChild(tip);
       }
       if (lastSlot) say('已放入' + lastSlot + '，还差几个槽位。');
       return;
@@ -193,13 +244,14 @@
     var code = global.APP.Canonical.code(graph);
     var matched = CODE_MAP[code];
 
-    var target = structureBox();
+    var target = document.getElementById('structure');
     if (target) {
-      target.innerHTML = global.APP.Render.markup(graph);
+      target.innerHTML = '<img class="figure" src="img/' + record.id + '.png" alt="' + record.zh + '的结构式">';
     }
 
     if (matched) {
       showInfo(matched);
+      showModal(matched, graph);
       say('拼装完成：' + matched.zh + '（' + matched.abbr3 + '）。');
     } else {
       var info = document.getElementById('info');
@@ -212,6 +264,7 @@
 
   function start() {
     buildPalette();
+    bindModal();
 
     var slots = document.querySelectorAll('[data-drop-target]');
     Array.prototype.forEach.call(slots, function (slot) {
@@ -222,6 +275,16 @@
     global.APP.Drag.init({ onDrop: placeInto });
     say('把四个槽位放对，就会拼出一个完整的氨基酸结构式。');
   }
+
+  global.APP.App = {
+    assemble: function (id) {
+      state.amino = 'amino';
+      state.carboxyl = 'carboxyl';
+      state.hydrogen = 'hydrogen';
+      state.sideChain = id;
+      refresh(null);
+    }
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', start);

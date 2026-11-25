@@ -47,7 +47,20 @@
 
 <footer>
   <output id="message" aria-live="polite"></output>
+  <p class="credit">结构式引自杨荣武《生物化学原理》（第四版）</p>
 </footer>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button class="modal-close" id="modal-close" type="button" aria-label="关闭">×</button>
+    <p class="modal-kicker">拼装完成</p>
+    <h2 class="modal-title" id="modal-title"></h2>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div class="modal-figure" id="modal-figure"></div>
+    <dl class="info-list" id="modal-props"></dl>
+    <p class="modal-note" id="modal-note"></p>
+  </div>
+</div>
 
 <script src="js/data.js"></script>
 <script src="js/graph.js"></script>

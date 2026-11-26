@@ -3,21 +3,6 @@
 
   var DATA = global.APP.DATA;
 
-  var FIXED = [
-    { kind: 'fixed', slot: 'amino', name: '氨基', formula: '-NH₂' },
-    { kind: 'fixed', slot: 'carboxyl', name: '羧基', formula: '-COOH' },
-    { kind: 'fixed', slot: 'hydrogen', name: '氢', formula: '-H' }
-  ];
-
-  // 5c-2：R 基不再从 20 个现成侧链里挑，改成自己拖原子拼
-  var ATOMS = [
-    { kind: 'atom', id: 'C', el: 'C', name: '碳', formula: 'C' },
-    { kind: 'atom', id: 'N', el: 'N', name: '氮', formula: 'N' },
-    { kind: 'atom', id: 'O', el: 'O', name: '氧', formula: 'O' },
-    { kind: 'atom', id: 'S', el: 'S', name: '硫', formula: 'S' },
-    { kind: 'atom', id: 'H', el: 'H', name: '氢', formula: 'H' }
-  ];
-
   var atomSeq = 0;
 
   // 环块：一次插入多个原子和多根键，内部键不可改
@@ -154,6 +139,22 @@
       }
     }
 
+    // 只给"这一次新出现的"东西挂上入场动画，之后重绘就不再重播
+    if (state.lastAtom) {
+      Array.prototype.forEach.call(
+        box.querySelectorAll('circle[data-atom="' + state.lastAtom + '"]'),
+        function (node) { node.classList.add('atom-new'); }
+      );
+      state.lastAtom = null;
+    }
+    if (state.lastBond) {
+      Array.prototype.forEach.call(
+        box.querySelectorAll('[data-bond="' + state.lastBond + '"]'),
+        function (node) { node.classList.add('bond-new'); }
+      );
+      state.lastBond = null;
+    }
+
     box.onclick = function () {
       if (!state.selected) return;
       state.selected = null;
@@ -227,6 +228,7 @@
     }
 
     state.side.bonds.push({ a: a, b: b, order: 1 });
+    state.lastBond = a + "|" + b;
     return true;
   }
 
@@ -271,35 +273,10 @@
     return chip;
   }
 
+  // 积木现在是写死在 HTML 里的按钮，JS 只负责挂上拖拽
   function buildPalette() {
-    var list = document.getElementById('chip-list');
-    if (!list) return;
-
-    FIXED.forEach(function (item) {
-      var chip = createChip(item);
-      list.appendChild(chip);
-      global.APP.Drag.bind(chip);
-    });
-
-    var divider = document.createElement('div');
-    divider.className = 'divider';
-    divider.textContent = '原子';
-    list.appendChild(divider);
-
-    ATOMS.forEach(function (item) {
-      var chip = createChip(item);
-      list.appendChild(chip);
-      global.APP.Drag.bind(chip);
-    });
-
-    var ringDivider = document.createElement('div');
-    ringDivider.className = 'divider';
-    ringDivider.textContent = '环';
-    list.appendChild(ringDivider);
-
-    RINGS.forEach(function (item) {
-      var chip = createChip(item);
-      list.appendChild(chip);
+    var chips = document.querySelectorAll('#palette .chip');
+    Array.prototype.forEach.call(chips, function (chip) {
       global.APP.Drag.bind(chip);
     });
   }
@@ -393,6 +370,7 @@
     var id = 'r' + atomSeq;
     state.side.atoms.push({ id: id, el: el });
     if (!state.side.root) state.side.root = id;
+    state.lastAtom = id;
     renderSide();
     refresh(null);
   }
@@ -435,42 +413,56 @@
     refresh(null);
   }
 
+  function fill(id, text) {
+    var node = document.getElementById(id);
+    if (node) node.textContent = text;
+  }
+
   function showInfo(aa) {
-    var box = document.getElementById('info');
-    if (!box) return;
-    box.innerHTML = '';
+    var empty = document.getElementById('info-empty');
+    var body = document.getElementById('info-body');
+    if (!empty || !body) return;
 
-    var title = document.createElement('div');
-    title.className = 'info-title';
-    title.textContent = aa.zh + '　' + aa.abbr3 + '　' + aa.abbr1;
-    box.appendChild(title);
+    empty.hidden = true;
+    body.hidden = false;
 
-    var rows = [
-      ['分类', DATA.categories[aa.category].label],
-      ['亲疏水', aa.solubility],
-      ['分子式', aa.formula],
-      ['等电点', aa.pI.toFixed(2)],
-      ['疏水指数', aa.hydropathy.toFixed(2)],
-      ['pKa', aa.pKa.carboxyl + ' / ' + aa.pKa.amino + (aa.pKa.sideChain ? ' / ' + aa.pKa.sideChain : '')],
-      ['必需性', aa.essential]
-    ];
+    fill('info-title', aa.zh + '　' + aa.abbr3 + '　' + aa.abbr1);
+    fill('info-category', DATA.categories[aa.category].label);
+    fill('info-solubility', aa.solubility);
+    fill('info-formula', aa.formula);
+    fill('info-pi', aa.pI.toFixed(2));
+    fill('info-hydropathy', aa.hydropathy.toFixed(2));
+    fill('info-pka', aa.pKa.carboxyl + ' / ' + aa.pKa.amino +
+      (aa.pKa.sideChain ? ' / ' + aa.pKa.sideChain : ''));
+    fill('info-essential', aa.essential);
+    fill('info-note', aa.note);
+  }
 
-    var dl = document.createElement('dl');
-    dl.className = 'info-list';
-    rows.forEach(function (row) {
-      var dt = document.createElement('dt');
-      dt.textContent = row[0];
-      var dd = document.createElement('dd');
-      dd.textContent = row[1];
-      dl.appendChild(dt);
-      dl.appendChild(dd);
-    });
-    box.appendChild(dl);
+  // 信息面板只有一块提示位，三种状态轮流用它
+  function setInfo(text) {
+    var empty = document.getElementById('info-empty');
+    var body = document.getElementById('info-body');
+    if (body) body.hidden = true;
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = text;
+    }
+  }
 
-    var note = document.createElement('p');
-    note.className = 'info-note';
-    note.textContent = aa.note;
-    box.appendChild(note);
+  function showStructure(aa) {
+    var figure = document.getElementById('structure');
+    var img = document.getElementById('structure-img');
+    var caption = document.getElementById('structure-caption');
+    if (!figure || !img) return;
+
+    if (!aa) {
+      figure.hidden = true;
+      return;
+    }
+    img.src = 'img/' + aa.id + '.png';
+    img.alt = aa.zh + '的结构式';
+    if (caption) caption.textContent = aa.zh + '　' + aa.abbr3;
+    figure.hidden = false;
   }
 
   function hideModal() {
@@ -480,35 +472,27 @@
     document.body.classList.remove('modal-open');
   }
 
-  function showModal(aa, graph) {
+  function showModal(aa) {
     var modal = document.getElementById('modal');
     if (!modal) return;
 
-    document.getElementById('modal-title').textContent = aa.zh;
-    document.getElementById('modal-sub').textContent =
-      aa.en + '　' + aa.abbr3 + ' / ' + aa.abbr1 + '　' + DATA.categories[aa.category].label;
+    fill('modal-title', aa.zh);
+    fill('modal-sub', aa.en + '　' + aa.abbr3 + ' / ' + aa.abbr1 + '　' +
+      DATA.categories[aa.category].label);
 
-    document.getElementById('modal-figure').innerHTML =
-      '<img class="figure" src="img/' + aa.id + '.png" alt="' + aa.zh + '的结构式">';
+    var img = document.getElementById('modal-img');
+    if (img) {
+      img.src = 'img/' + aa.id + '.png';
+      img.alt = aa.zh + '的结构式';
+    }
+    fill('modal-caption', aa.zh + '　' + aa.abbr3);
 
-    var props = document.getElementById('modal-props');
-    props.innerHTML = '';
-    [
-      ['分子式', aa.formula],
-      ['等电点', aa.pI.toFixed(2)],
-      ['疏水指数', aa.hydropathy.toFixed(2)],
-      ['亲疏水', aa.solubility],
-      ['必需性', aa.essential]
-    ].forEach(function (row) {
-      var dt = document.createElement('dt');
-      dt.textContent = row[0];
-      var dd = document.createElement('dd');
-      dd.textContent = row[1];
-      props.appendChild(dt);
-      props.appendChild(dd);
-    });
-
-    document.getElementById('modal-note').textContent = aa.note;
+    fill('modal-formula', aa.formula);
+    fill('modal-pi', aa.pI.toFixed(2));
+    fill('modal-hydropathy', aa.hydropathy.toFixed(2));
+    fill('modal-solubility', aa.solubility);
+    fill('modal-essential', aa.essential);
+    fill('modal-note', aa.note);
 
     modal.hidden = false;
     document.body.classList.add('modal-open');
@@ -537,29 +521,16 @@
     var complete = state.amino && state.carboxyl && state.hydrogen && hasSide;
 
     if (!complete) {
-      var box0 = document.getElementById('structure');
-      if (box0) box0.innerHTML = '';
-
-      var info0 = document.getElementById('info');
-      if (info0) {
-        info0.innerHTML = '';
-        var tip = document.createElement('p');
-        tip.className = 'placeholder';
-        tip.textContent = '需要将四个槽位都放置完成。';
-        info0.appendChild(tip);
-      }
+      showStructure(null);
+      setInfo('需要将四个槽位都放置完成。');
       if (lastSlot) say('已放入' + lastSlot + '，还差几个槽位');
       return;
     }
 
     // 侧链还没连成一体时，不能拿去比对——那是"还没拼完"，不是"拼错了"
     if (!global.APP.Graph.sideConnected(state.side)) {
-      var pending = document.getElementById('info');
-      if (pending) {
-        pending.innerHTML = '<p class="placeholder">有原子未连接。</p>';
-      }
-      var box = document.getElementById('structure');
-      if (box) box.innerHTML = '';
+      showStructure(null);
+      setInfo('有原子未连接。');
       say('等待拼接');
       return;
     }
@@ -569,22 +540,14 @@
     var code = global.APP.Canonical.code(graph);
     var matched = CODE_MAP[code];
 
-    var target = document.getElementById('structure');
-    if (target) {
-      target.innerHTML = matched
-        ? '<img class="figure" src="img/' + matched.id + '.png" alt="' + matched.zh + '的结构式">'
-        : '';
-    }
-
     if (matched) {
+      showStructure(matched);
       showInfo(matched);
-      showModal(matched, graph);
+      showModal(matched);
       say('拼装完成：' + matched.zh + '（' + matched.abbr3 + '）。');
     } else {
-      var info = document.getElementById('info');
-      if (info) {
-        info.innerHTML = '<p class="placeholder">这是一个合法的结构，但不是 20 种标准氨基酸之一。</p>';
-      }
+      showStructure(null);
+      setInfo('这是一个合法的结构，但不是 20 种标准氨基酸之一。');
       say('不在 20 种标准氨基酸里');
     }
   }
@@ -603,6 +566,7 @@
       bindSlot(slot);
     });
 
+    if (global.APP.Effects) global.APP.Effects.init();
     global.APP.Drag.init({ onDrop: placeInto });
     say('需要把四个槽位都放对');
   }

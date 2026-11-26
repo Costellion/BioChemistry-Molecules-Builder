@@ -10,17 +10,84 @@
 
 <header>
   <h1>氨基酸分子拼装</h1>
-  <p class="subtitle">把左边的基团/原子拖到骨架的空位上，点一下可以取下。</p>
+  <p class="subtitle">把左边的基团与原子拖到骨架上，R 基自己连。</p>
 </header>
 
 <main>
   <aside id="palette" aria-label="积木面板">
     <h2>积木</h2>
-    <div class="chip-list" id="chip-list"></div>
+
+    <p class="group-title">基团</p>
+    <ul class="chips">
+      <li>
+        <button class="chip" type="button" data-kind="fixed" data-key="amino">
+          <span class="name">氨基</span><span class="formula">-NH₂</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="fixed" data-key="carboxyl">
+          <span class="name">羧基</span><span class="formula">-COOH</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="fixed" data-key="hydrogen">
+          <span class="name">氢</span><span class="formula">-H</span>
+        </button>
+      </li>
+    </ul>
+
+    <p class="group-title">原子</p>
+    <ul class="chips">
+      <li>
+        <button class="chip" type="button" data-kind="atom" data-key="C">
+          <span class="name">碳</span><span class="formula">C</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="atom" data-key="N">
+          <span class="name">氮</span><span class="formula">N</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="atom" data-key="O">
+          <span class="name">氧</span><span class="formula">O</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="atom" data-key="S">
+          <span class="name">硫</span><span class="formula">S</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="atom" data-key="H">
+          <span class="name">氢</span><span class="formula">H</span>
+        </button>
+      </li>
+    </ul>
+
+    <p class="group-title">环块</p>
+    <ul class="chips">
+      <li>
+        <button class="chip" type="button" data-kind="ring" data-key="benzene">
+          <span class="name">苯环</span><span class="formula">C₆H₅</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="ring" data-key="imidazole">
+          <span class="name">咪唑环</span><span class="formula">C₃H₃N₂</span>
+        </button>
+      </li>
+      <li>
+        <button class="chip" type="button" data-kind="ring" data-key="indole">
+          <span class="name">吲哚环</span><span class="formula">C₈H₆N</span>
+        </button>
+      </li>
+    </ul>
   </aside>
 
   <section id="canvas" aria-label="拼装画布">
     <h2>骨架</h2>
+
     <div class="scaffold" id="scaffold">
       <div class="slot" data-slot="carboxyl" data-name="羧基" data-drop-target="slot"></div>
       <div class="slot" data-slot="amino" data-name="氨基" data-drop-target="slot"></div>
@@ -31,12 +98,38 @@
         <button class="r-clear" id="r-clear" type="button" hidden>清空</button>
       </div>
     </div>
-    <div class="structure" id="structure"></div>
+
+    <figure class="structure" id="structure" hidden>
+      <img id="structure-img" alt="">
+      <figcaption id="structure-caption"></figcaption>
+    </figure>
   </section>
 
   <aside id="info" aria-label="性质说明">
     <h2>性质</h2>
-    <p class="placeholder">拼装完成后在这里显示性质。</p>
+
+    <p class="placeholder" id="info-empty">四个槽位都放对，就拼出一个完整的氨基酸。</p>
+
+    <div id="info-body" hidden>
+      <p class="info-title" id="info-title"></p>
+      <dl class="info-list">
+        <dt>分类</dt>
+        <dd id="info-category"></dd>
+        <dt>亲疏水</dt>
+        <dd id="info-solubility"></dd>
+        <dt>分子式</dt>
+        <dd id="info-formula"></dd>
+        <dt>等电点</dt>
+        <dd id="info-pi"></dd>
+        <dt>疏水指数</dt>
+        <dd id="info-hydropathy"></dd>
+        <dt>pKa</dt>
+        <dd id="info-pka"></dd>
+        <dt>必需性</dt>
+        <dd id="info-essential"></dd>
+      </dl>
+      <p class="info-note" id="info-note"></p>
+    </div>
   </aside>
 </main>
 
@@ -50,9 +143,26 @@
     <button class="modal-close" id="modal-close" type="button" aria-label="关闭">×</button>
     <p class="modal-kicker">拼装完成</p>
     <h2 class="modal-title" id="modal-title"></h2>
-    <div class="modal-sub" id="modal-sub"></div>
-    <div class="modal-figure" id="modal-figure"></div>
-    <dl class="info-list" id="modal-props"></dl>
+    <p class="modal-sub" id="modal-sub"></p>
+
+    <figure class="modal-figure">
+      <img id="modal-img" alt="">
+      <figcaption id="modal-caption"></figcaption>
+    </figure>
+
+    <dl class="info-list">
+      <dt>分子式</dt>
+      <dd id="modal-formula"></dd>
+      <dt>等电点</dt>
+      <dd id="modal-pi"></dd>
+      <dt>疏水指数</dt>
+      <dd id="modal-hydropathy"></dd>
+      <dt>亲疏水</dt>
+      <dd id="modal-solubility"></dd>
+      <dt>必需性</dt>
+      <dd id="modal-essential"></dd>
+    </dl>
+
     <p class="modal-note" id="modal-note"></p>
   </div>
 </div>
@@ -63,6 +173,7 @@
 <script src="js/layout.js"></script>
 <script src="js/render.js"></script>
 <script src="js/drag.js"></script>
+<script src="js/effects.js"></script>
 <script src="js/app.js"></script>
 
 </body>

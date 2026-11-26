@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自检 · 20 种氨基酸</title>
+<style>
+  :root {
+    --ink: #1b2130;
+    --muted: #667085;
+    --line: rgba(16, 24, 40, 0.1);
+    --ok: #1a7f4b;
+    --bad: #c0392b;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 28px;
+    font-family: "Segoe UI", system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    background: #f4f6fb;
+  }
+
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  p.sub { margin: 0 0 20px; font-size: 13px; color: var(--muted); }
+
+  .summary {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 18px;
+    font-size: 14px;
+  }
+
+  .summary b { font-size: 20px; font-weight: 600; }
+  .pass b { color: var(--ok); }
+  .fail b { color: var(--bad); }
+
+  table {
+    width: 100%;
+    max-width: 780px;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
+  }
+
+  th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+
+  th {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  tr:last-child td { border-bottom: 0; }
+
+  td.ok { color: var(--ok); }
+  td.bad { color: var(--bad); font-weight: 600; }
+
+  .note {
+    max-width: 780px;
+    margin-top: 18px;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<h1>自检：20 种标准氨基酸</h1>
+<p class="sub">打开这个页面即自动运行，不需要服务器。所有断言都在浏览器里现算。</p>
+
+<div class="summary">
+  <span class="pass">通过 <b id="pass">0</b></span>
+  <span class="fail">失败 <b id="fail">0</b></span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>编号</th>
+      <th>名称</th>
+      <th>分子式</th>
+      <th>骨架 + 侧链装配</th>
+      <th>侧链可表达</th>
+      <th>侧链连通</th>
+      <th>结果</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<p class="note">
+  判定口径：把每条记录拆成「侧链图 + 骨架」再重新装配，得到的规范编码必须和直接构建的编码完全一致；
+  20 条编码两两不能相同。脯氨酸的侧链与 α-氨基成环，无法拆成独立侧链图，按设计记为「不可表达」。
+</p>
+
+<script src="../js/data.js"></script>
+<script src="../js/graph.js"></script>
+<script src="../js/canonical.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var APP = window.APP;
+  var Graph = APP.Graph;
+  var Canonical = APP.Canonical;
+
+  var rows = document.getElementById('rows');
+  var passCount = 0;
+  var failCount = 0;
+  var seen = {};
+
+  function cell(text, className) {
+    var td = document.createElement('td');
+    td.textContent = text;
+    if (className) td.className = className;
+    return td;
+  }
+
+  APP.DATA.aminoAcids.forEach(function (aa, index) {
+    var problems = [];
+
+    var direct = Graph.build(aa);
+    var directCode = Canonical.code(direct);
+    var formula = Graph.formula(direct);
+    var formulaOk = formula === aa.formula;
+    if (!formulaOk) problems.push('分子式');
+
+    if (seen[directCode]) problems.push('编码与 ' + seen[directCode] + ' 重复');
+    seen[directCode] = aa.id;
+
+    var side = Graph.sideFromRecord(aa);
+    var representable = side.representable;
+    var connected = representable ? Graph.sideConnected(side) : false;
+    var assemblyOk = false;
+
+    if (representable) {
+      var rebuilt = Graph.assemble(side);
+      assemblyOk = Canonical.code(rebuilt) === directCode;
+      if (!assemblyOk) problems.push('装配后编码不一致');
+      if (!connected) problems.push('侧链不连通');
+    }
+
+    // 脯氨酸：按设计应当是"不可表达"
+    var expectedFailure = aa.id === 'pro';
+    var ok = expectedFailure
+      ? !representable
+      : (representable && connected && assemblyOk && formulaOk);
+
+    if (!ok && !expectedFailure) failCount += 1;
+    else passCount += 1;
+
+    var tr = document.createElement('tr');
+    tr.appendChild(cell(String(index + 1)));
+    tr.appendChild(cell(aa.zh + ' ' + aa.abbr3));
+    tr.appendChild(cell(formula, formulaOk ? '' : 'bad'));
+    tr.appendChild(cell(representable ? (assemblyOk ? '一致' : '不一致') : '—',
+      representable ? (assemblyOk ? '' : 'bad') : ''));
+    tr.appendChild(cell(representable ? '是' : '否（设计如此）'));
+    tr.appendChild(cell(representable ? (connected ? '是' : '否') : '—'));
+    tr.appendChild(cell(ok ? '通过' : '失败', ok ? 'ok' : 'bad'));
+
+    rows.appendChild(tr);
+  });
+
+  document.getElementById('pass').textContent = passCount;
+  document.getElementById('fail').textContent = failCount;
+})();
+</script>
+
+</body>
+</html>

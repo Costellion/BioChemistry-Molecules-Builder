@@ -275,8 +275,12 @@
         })[0] || ids[0]);
       var heading = opts.direction || { x: 0, y: 1 };
       remember(root, { x: 0, y: 0 });
+      // 根原子的多个子原子要岔开，否则会叠在同一个点上
+      var turn = 1;
       adj[root].forEach(function (next) {
-        queue.push({ id: next, from: root, dir: heading });
+        var dir = rotate(heading, 55 * turn);
+        turn = -turn;
+        queue.push({ id: next, from: root, dir: dir });
       });
     }
 
@@ -320,7 +324,7 @@
             x: points[item.id].x + alternative.x,
             y: points[item.id].y + alternative.y
           };
-          if (free(other) || !free(candidate)) direction = alternative;
+          if (free(other)) direction = alternative;
         }
 
         queue.push({ id: next, from: item.id, dir: direction });

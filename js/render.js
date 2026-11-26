@@ -353,17 +353,19 @@
       var b = placed.points[edge.b];
       if (!a || !b) return;
 
+      var key = edge.a + '|' + edge.b;
+
       if (edge.order === 2) {
         var shift = 2.6;
         var p1 = pointOnLine(a, b, 0.18, shift);
         var p2 = pointOnLine(a, b, 0.82, shift);
         var p3 = pointOnLine(a, b, 0.18, -shift);
         var p4 = pointOnLine(a, b, 0.82, -shift);
-        parts.push('<line x1="' + p1.x.toFixed(1) + '" y1="' + p1.y.toFixed(1) + '" x2="' + p2.x.toFixed(1) + '" y2="' + p2.y.toFixed(1) + '" stroke="#2b3242" stroke-width="1.8"/>');
-        parts.push('<line x1="' + p3.x.toFixed(1) + '" y1="' + p3.y.toFixed(1) + '" x2="' + p4.x.toFixed(1) + '" y2="' + p4.y.toFixed(1) + '" stroke="#2b3242" stroke-width="1.8"/>');
+        parts.push('<line data-bond="' + key + '" x1="' + p1.x.toFixed(1) + '" y1="' + p1.y.toFixed(1) + '" x2="' + p2.x.toFixed(1) + '" y2="' + p2.y.toFixed(1) + '" stroke="#2b3242" stroke-width="1.8"/>');
+        parts.push('<line data-bond="' + key + '" x1="' + p3.x.toFixed(1) + '" y1="' + p3.y.toFixed(1) + '" x2="' + p4.x.toFixed(1) + '" y2="' + p4.y.toFixed(1) + '" stroke="#2b3242" stroke-width="1.8"/>');
       } else {
         parts.push(
-          '<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) +
+          '<line data-bond="' + key + '" x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) +
           '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) +
           '" stroke="#2b3242" stroke-width="1.8"/>'
         );
@@ -374,7 +376,7 @@
       var p = placed.points[a.id];
       if (!p) return;
       var fill = ELEMENT_COLOR[a.el] || '#2b3242';
-      parts.push('<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="9" fill="#ffffff" stroke="' + fill + '" stroke-width="1.4"/>');
+      parts.push('<circle data-atom="' + a.id + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="9" fill="#ffffff" stroke="' + fill + '" stroke-width="1.4"/>');
       parts.push(
         '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 3.4).toFixed(1) +
         '" text-anchor="middle" font-size="10" font-family="system-ui, sans-serif" fill="' + fill + '">' +

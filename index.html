@@ -22,19 +22,13 @@
   <section id="canvas" aria-label="拼装画布">
     <h2>骨架</h2>
     <div class="scaffold" id="scaffold">
-      <div class="slot" data-slot="amino" data-drop-target="slot">
-        <span class="slot-hint">氨基</span>
-      </div>
-      <div class="slot" data-slot="hydrogen" data-drop-target="slot">
-        <span class="slot-hint">氢</span>
-      </div>
-      <div class="slot" data-slot="carboxyl" data-drop-target="slot">
-        <span class="slot-hint">羧基</span>
-      </div>
+      <div class="slot" data-slot="carboxyl" data-name="羧基" data-drop-target="slot"></div>
+      <div class="slot" data-slot="amino" data-name="氨基" data-drop-target="slot"></div>
+      <div class="ca-badge" aria-hidden="true">Cα</div>
+      <div class="slot" data-slot="hydrogen" data-name="氢" data-drop-target="slot"></div>
       <div class="slot slot-r" data-slot="sideChain" data-name="R 基" data-drop-target="slot">
         <div class="r-canvas" id="r-canvas"></div>
       </div>
-      <div class="ca-badge" aria-hidden="true">Cα</div>
     </div>
     <div class="structure" id="structure"></div>
   </section>

@@ -9,16 +9,23 @@
     { kind: 'fixed', slot: 'hydrogen', name: '氢', formula: '-H' }
   ];
 
-  var SIDE = DATA.aminoAcids.map(function (aa) {
-    return { kind: 'side', id: aa.id, name: aa.zh, formula: aa.abbr3 };
-  });
+  // 5c-2：R 基不再从 20 个现成侧链里挑，改成自己拖原子拼
+  var ATOMS = [
+    { kind: 'atom', id: 'C', el: 'C', name: '碳', formula: 'C' },
+    { kind: 'atom', id: 'N', el: 'N', name: '氮', formula: 'N' },
+    { kind: 'atom', id: 'O', el: 'O', name: '氧', formula: 'O' },
+    { kind: 'atom', id: 'S', el: 'S', name: '硫', formula: 'S' },
+    { kind: 'atom', id: 'H', el: 'H', name: '氢', formula: 'H' }
+  ];
+
+  var atomSeq = 0;
 
   var CODE_MAP = {};
   DATA.aminoAcids.forEach(function (aa) {
     CODE_MAP[global.APP.Canonical.code(global.APP.Graph.build(aa))] = aa;
   });
 
-  var state = { amino: null, carboxyl: null, hydrogen: null, sideChain: null, side: null };
+  var state = { amino: null, carboxyl: null, hydrogen: null, sideChain: null, side: null, selected: null };
 
   function say(text) {
     var out = document.getElementById('message');
@@ -56,6 +63,135 @@
       // 氢留到判定通过后的教材原图里去呈现。
       hydrogens: false
     });
+
+    // 单个原子：点一下选中，再点另一个就连键；双击删掉这个原子
+    Array.prototype.forEach.call(box.querySelectorAll('circle[data-atom]'), function (node) {
+      var id = node.getAttribute('data-atom');
+      node.style.cursor = 'pointer';
+      node.addEventListener('click', function (event) {
+        event.stopPropagation();
+        onAtomClick(id);
+      });
+      node.addEventListener('dblclick', function (event) {
+        event.stopPropagation();
+        state.selected = null;
+        removeAtom(id);
+      });
+    });
+
+    // 键：点一下在单键/双键之间切换
+    Array.prototype.forEach.call(box.querySelectorAll('[data-bond]'), function (node) {
+      node.style.cursor = 'pointer';
+      node.addEventListener('click', function (event) {
+        event.stopPropagation();
+        toggleBond(node.getAttribute('data-bond'));
+      });
+    });
+
+    if (state.selected) {
+      var picked = box.querySelector('circle[data-atom="' + state.selected + '"]');
+      if (picked) {
+        picked.setAttribute('stroke', '#2f6feb');
+        picked.setAttribute('stroke-width', '2.6');
+      }
+    }
+
+    box.onclick = function () {
+      if (!state.selected) return;
+      state.selected = null;
+      renderSide();
+    };
+  }
+
+  function elementOf(id) {
+    var atom = (state.side ? state.side.atoms : []).filter(function (a) { return a.id === id; })[0];
+    return atom ? atom.el : null;
+  }
+
+  function bondUsage() {
+    var used = {};
+    if (!state.side) return used;
+    state.side.atoms.forEach(function (a) { used[a.id] = 0; });
+    state.side.bonds.forEach(function (b) {
+      used[b.a] = (used[b.a] || 0) + b.order;
+      used[b.b] = (used[b.b] || 0) + b.order;
+    });
+    return used;
+  }
+
+  function findBond(a, b) {
+    if (!state.side) return null;
+    return state.side.bonds.filter(function (x) {
+      return (x.a === a && x.b === b) || (x.a === b && x.b === a);
+    })[0] || null;
+  }
+
+  function onAtomClick(id) {
+    if (!state.side) return;
+
+    if (!state.selected) {
+      state.selected = id;
+      renderSide();
+      say('已选中一个原子，再点另一个就连键；双击原子可以删掉它。');
+      return;
+    }
+    if (state.selected === id) {
+      state.selected = null;
+      renderSide();
+      say('已取消选中。');
+      return;
+    }
+
+    if (tryBond(state.selected, id)) {
+      state.selected = null;
+      renderSide();
+      refresh(null);
+    }
+  }
+
+  function tryBond(a, b) {
+    var limit = global.APP.Graph.VALENCE;
+    var elA = elementOf(a);
+    var elB = elementOf(b);
+    var used = bondUsage();
+
+    if ((used[a] || 0) + 1 > limit[elA]) {
+      say(elA + ' 的价键已经用满了，连不上了。');
+      return false;
+    }
+    if ((used[b] || 0) + 1 > limit[elB]) {
+      say(elB + ' 的价键已经用满了，连不上了。');
+      return false;
+    }
+    if (findBond(a, b)) {
+      say('这两个原子已经连着了。');
+      return false;
+    }
+
+    state.side.bonds.push({ a: a, b: b, order: 1 });
+    return true;
+  }
+
+  function toggleBond(key) {
+    var parts = key.split('|');
+    var bond = findBond(parts[0], parts[1]);
+    if (!bond) return;
+
+    if (bond.order === 2) {
+      bond.order = 1;
+    } else {
+      var limit = global.APP.Graph.VALENCE;
+      var used = bondUsage();
+      if ((used[bond.a] || 0) + 1 > limit[elementOf(bond.a)] ||
+          (used[bond.b] || 0) + 1 > limit[elementOf(bond.b)]) {
+        say('没有多余的价键，变不成双键。');
+        return;
+      }
+      bond.order = 2;
+    }
+
+    renderSide();
+    refresh(null);
   }
 
   function createChip(item) {
@@ -89,10 +225,10 @@
 
     var divider = document.createElement('div');
     divider.className = 'divider';
-    divider.textContent = '侧链积木';
+    divider.textContent = '原子';
     list.appendChild(divider);
 
-    SIDE.forEach(function (item) {
+    ATOMS.forEach(function (item) {
       var chip = createChip(item);
       list.appendChild(chip);
       global.APP.Drag.bind(chip);
@@ -108,31 +244,28 @@
 
   function placeInto(slot, chip) {
     var slotId = slot.getAttribute('data-slot');
+    var kind = chip.getAttribute('data-kind');
 
     if (!accepts(slotId, chip)) {
-      say(slotName(slot) + '不能放这个，只接受对应的基团。');
+      say('这个基团不在这里。');
       return false;
     }
+
+    // 原子：落进 R 基画布，追加一个节点。这一步还不连键（连键在 5c-3）
+    if (kind === 'atom') {
+      slot.classList.add('is-occupied');
+      addAtom(chip.getAttribute('data-key'));
+      return true;
+    }
+
     if (slot.classList.contains('is-occupied')) {
-      say(slotName(slot) + '已经有积木了，点一下它取下再换。');
+      say('这个位置已经有基团了。');
       return false;
     }
 
     var key = chip.getAttribute('data-key');
-
-    if (slotId === 'sideChain') {
-      var sideRecord = DATA.aminoAcids.filter(function (a) { return a.id === key; })[0];
-      if (!sideRecord) return false;
-      state.sideChain = key;
-      state.side = global.APP.Graph.sideFromRecord(sideRecord);
-      slot.classList.add('is-occupied');
-      renderSide();
-      refresh(slotName(slot));
-      return true;
-    }
-
     var placed = createChip({
-      kind: chip.getAttribute('data-kind'),
+      kind: kind,
       slot: key,
       id: key,
       name: chip.querySelector('.name').textContent,
@@ -145,22 +278,15 @@
     slot.classList.add('is-occupied');
     state[slotId] = key;
 
-    refresh(slotName(slot));
+    refresh(null);
     return true;
   }
 
   function bindSlot(slot) {
     slot.addEventListener('click', function () {
       if (!slot.classList.contains('is-occupied')) return;
-
-      if (slot.getAttribute('data-slot') === 'sideChain') {
-        state.sideChain = null;
-        state.side = null;
-        slot.classList.remove('is-occupied');
-        renderSide();
-        refresh(null);
-        return;
-      }
+      // R 基画布里的原子靠"点原子"删除，点空白不做事
+      if (slot.getAttribute('data-slot') === 'sideChain') return;
 
       var placed = slot.querySelector('.chip');
       if (!placed) return;
@@ -169,6 +295,36 @@
       state[slot.getAttribute('data-slot')] = null;
       refresh(null);
     });
+  }
+
+  // ---- R 基的原子增删 ----
+
+  function addAtom(el) {
+    if (!state.side) state.side = { atoms: [], bonds: [], root: null };
+    atomSeq += 1;
+    var id = 'r' + atomSeq;
+    state.side.atoms.push({ id: id, el: el });
+    if (!state.side.root) state.side.root = id;
+    renderSide();
+    refresh(null);
+  }
+
+  function removeAtom(id) {
+    if (!state.side) return;
+    state.side.atoms = state.side.atoms.filter(function (a) { return a.id !== id; });
+    state.side.bonds = state.side.bonds.filter(function (b) {
+      return b.a !== id && b.b !== id;
+    });
+    if (state.side.root === id) {
+      state.side.root = state.side.atoms.length ? state.side.atoms[0].id : null;
+    }
+    if (!state.side.atoms.length) {
+      state.side = null;
+      var slot = document.querySelector('[data-slot="sideChain"]');
+      if (slot) slot.classList.remove('is-occupied');
+    }
+    renderSide();
+    refresh(null);
   }
 
   function showInfo(aa) {
@@ -269,7 +425,8 @@
   }
 
   function refresh(lastSlot) {
-    var complete = state.amino && state.carboxyl && state.hydrogen && state.sideChain;
+    var hasSide = !!(state.side && state.side.atoms.length);
+    var complete = state.amino && state.carboxyl && state.hydrogen && hasSide;
 
     if (!complete) {
       var box0 = document.getElementById('structure');
@@ -344,7 +501,8 @@
 
       renderSide();
       refresh(null);
-    }
+    },
+    addAtom: addAtom
   };
 
   if (document.readyState === 'loading') {

@@ -20,6 +20,61 @@
 
   var atomSeq = 0;
 
+  // 环块：一次插入多个原子和多根键，内部键不可改
+  var RINGS = [
+    {
+      kind: 'ring',
+      id: 'benzene',
+      name: '苯环',
+      formula: 'C₆H₅',
+      attach: 'a0',
+      atoms: [
+        { id: 'a0', el: 'C' }, { id: 'a1', el: 'C' }, { id: 'a2', el: 'C' },
+        { id: 'a3', el: 'C' }, { id: 'a4', el: 'C' }, { id: 'a5', el: 'C' }
+      ],
+      bonds: [
+        { a: 'a0', b: 'a1', order: 1 }, { a: 'a1', b: 'a2', order: 2 },
+        { a: 'a2', b: 'a3', order: 1 }, { a: 'a3', b: 'a4', order: 2 },
+        { a: 'a4', b: 'a5', order: 1 }, { a: 'a5', b: 'a0', order: 2 }
+      ]
+    },
+    {
+      kind: 'ring',
+      id: 'imidazole',
+      name: '咪唑环',
+      formula: 'C₃H₃N₂',
+      attach: 'a0',
+      atoms: [
+        { id: 'a0', el: 'C' }, { id: 'a1', el: 'N' }, { id: 'a2', el: 'C' },
+        { id: 'a3', el: 'N' }, { id: 'a4', el: 'C' }
+      ],
+      bonds: [
+        { a: 'a0', b: 'a1', order: 1 }, { a: 'a1', b: 'a2', order: 1 },
+        { a: 'a2', b: 'a3', order: 2 }, { a: 'a3', b: 'a0', order: 1 },
+        { a: 'a0', b: 'a4', order: 2 }, { a: 'a4', b: 'a1', order: 1 }
+      ]
+    },
+    {
+      kind: 'ring',
+      id: 'indole',
+      name: '吲哚环',
+      formula: 'C₈H₆N',
+      attach: 'a0',
+      atoms: [
+        { id: 'a0', el: 'C' }, { id: 'a1', el: 'C' }, { id: 'a2', el: 'C' },
+        { id: 'a3', el: 'N' }, { id: 'a4', el: 'C' }, { id: 'a5', el: 'C' },
+        { id: 'a6', el: 'C' }, { id: 'a7', el: 'C' }, { id: 'a8', el: 'C' }
+      ],
+      bonds: [
+        { a: 'a0', b: 'a1', order: 2 }, { a: 'a1', b: 'a3', order: 1 },
+        { a: 'a3', b: 'a4', order: 1 }, { a: 'a4', b: 'a2', order: 1 },
+        { a: 'a2', b: 'a0', order: 1 }, { a: 'a2', b: 'a5', order: 2 },
+        { a: 'a5', b: 'a7', order: 1 }, { a: 'a7', b: 'a8', order: 2 },
+        { a: 'a8', b: 'a6', order: 1 }, { a: 'a6', b: 'a4', order: 2 }
+      ]
+    }
+  ];
+
   var CODE_MAP = {};
   DATA.aminoAcids.forEach(function (aa) {
     CODE_MAP[global.APP.Canonical.code(global.APP.Graph.build(aa))] = aa;
@@ -44,6 +99,9 @@
     if (!box) return;
 
     var side = state.side;
+    var clear = document.getElementById('r-clear');
+    if (clear) clear.hidden = !(side && side.atoms.length);
+
     if (!side || !side.atoms.length) {
       box.innerHTML = '<p class="r-empty">把原子拖到这里<br>再用点击把它们连起来</p>';
       return;
@@ -132,13 +190,13 @@
     if (!state.selected) {
       state.selected = id;
       renderSide();
-      say('已选中一个原子，再点另一个就连键；双击原子可以删掉它。');
+      say('已选中一个原子，点击另一个原子以连接共价键；双击原子可以将其删除');
       return;
     }
     if (state.selected === id) {
       state.selected = null;
       renderSide();
-      say('已取消选中。');
+      say('已取消选中');
       return;
     }
 
@@ -156,15 +214,15 @@
     var used = bondUsage();
 
     if ((used[a] || 0) + 1 > limit[elA]) {
-      say(elA + ' 的价键已经用满了，连不上了。');
+      say(elA + ' 的价键已经用尽');
       return false;
     }
     if ((used[b] || 0) + 1 > limit[elB]) {
-      say(elB + ' 的价键已经用满了，连不上了。');
+      say(elB + ' 的价键已经用尽');
       return false;
     }
     if (findBond(a, b)) {
-      say('这两个原子已经连着了。');
+      say('两个原子已经连接');
       return false;
     }
 
@@ -184,7 +242,7 @@
       var used = bondUsage();
       if ((used[bond.a] || 0) + 1 > limit[elementOf(bond.a)] ||
           (used[bond.b] || 0) + 1 > limit[elementOf(bond.b)]) {
-        say('没有多余的价键，变不成双键。');
+        say('价键不足');
         return;
       }
       bond.order = 2;
@@ -233,6 +291,17 @@
       list.appendChild(chip);
       global.APP.Drag.bind(chip);
     });
+
+    var ringDivider = document.createElement('div');
+    ringDivider.className = 'divider';
+    ringDivider.textContent = '环';
+    list.appendChild(ringDivider);
+
+    RINGS.forEach(function (item) {
+      var chip = createChip(item);
+      list.appendChild(chip);
+      global.APP.Drag.bind(chip);
+    });
   }
 
   function accepts(slotId, chip) {
@@ -247,7 +316,7 @@
     var kind = chip.getAttribute('data-kind');
 
     if (!accepts(slotId, chip)) {
-      say('这个基团不在这里。');
+      say('位置错误');
       return false;
     }
 
@@ -258,8 +327,17 @@
       return true;
     }
 
+    // 环块：一次插入多个原子和多根键，内部键不可改
+    if (kind === 'ring') {
+      var block = RINGS.filter(function (r) { return r.id === chip.getAttribute('data-key'); })[0];
+      if (!block) return false;
+      slot.classList.add('is-occupied');
+      addBlock(block);
+      return true;
+    }
+
     if (slot.classList.contains('is-occupied')) {
-      say('这个位置已经有基团了。');
+      say('此处已有基团');
       return false;
     }
 
@@ -299,12 +377,42 @@
 
   // ---- R 基的原子增删 ----
 
+  function clearSide() {
+    state.side = null;
+    state.selected = null;
+    var slot = document.querySelector('[data-slot="sideChain"]');
+    if (slot) slot.classList.remove('is-occupied');
+    renderSide();
+    refresh(null);
+    say('已清空 R 基。');
+  }
+
   function addAtom(el) {
     if (!state.side) state.side = { atoms: [], bonds: [], root: null };
     atomSeq += 1;
     var id = 'r' + atomSeq;
     state.side.atoms.push({ id: id, el: el });
     if (!state.side.root) state.side.root = id;
+    renderSide();
+    refresh(null);
+  }
+
+  function addBlock(block) {
+    if (!state.side) state.side = { atoms: [], bonds: [], root: null };
+    atomSeq += 1;
+    var prefix = 'b' + atomSeq + '_';
+    var mapping = {};
+
+    block.atoms.forEach(function (a) {
+      var id = prefix + a.id;
+      mapping[a.id] = id;
+      state.side.atoms.push({ id: id, el: a.el });
+    });
+    block.bonds.forEach(function (b) {
+      state.side.bonds.push({ a: mapping[b.a], b: mapping[b.b], order: b.order });
+    });
+
+    if (!state.side.root) state.side.root = mapping[block.attach];
     renderSide();
     refresh(null);
   }
@@ -437,10 +545,22 @@
         info0.innerHTML = '';
         var tip = document.createElement('p');
         tip.className = 'placeholder';
-        tip.textContent = '四个槽位都放对，就拼出一个完整的氨基酸。';
+        tip.textContent = '需要将四个槽位都放置完成。';
         info0.appendChild(tip);
       }
-      if (lastSlot) say('已放入' + lastSlot + '，还差几个槽位。');
+      if (lastSlot) say('已放入' + lastSlot + '，还差几个槽位');
+      return;
+    }
+
+    // 侧链还没连成一体时，不能拿去比对——那是"还没拼完"，不是"拼错了"
+    if (!global.APP.Graph.sideConnected(state.side)) {
+      var pending = document.getElementById('info');
+      if (pending) {
+        pending.innerHTML = '<p class="placeholder">有原子未连接。</p>';
+      }
+      var box = document.getElementById('structure');
+      if (box) box.innerHTML = '';
+      say('等待拼接');
       return;
     }
 
@@ -465,7 +585,7 @@
       if (info) {
         info.innerHTML = '<p class="placeholder">这是一个合法的结构，但不是 20 种标准氨基酸之一。</p>';
       }
-      say('合法的侧链，但不在 20 种标准氨基酸里。');
+      say('不在 20 种标准氨基酸里');
     }
   }
 
@@ -474,6 +594,9 @@
     bindModal();
     renderSide();
 
+    var clearBtn = document.getElementById('r-clear');
+    if (clearBtn) clearBtn.addEventListener('click', clearSide);
+
     var slots = document.querySelectorAll('[data-drop-target]');
     Array.prototype.forEach.call(slots, function (slot) {
       slot.setAttribute('aria-label', '槽位：' + slotName(slot));
@@ -481,7 +604,7 @@
     });
 
     global.APP.Drag.init({ onDrop: placeInto });
-    say('把四个槽位放对，就会拼出一个完整的氨基酸结构式。');
+    say('需要把四个槽位都放对');
   }
 
   global.APP.App = {

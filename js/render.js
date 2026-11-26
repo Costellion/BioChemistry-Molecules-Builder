@@ -312,8 +312,6 @@
 
     var element = {};
     fragment.atoms.forEach(function (a) { element[a.id] = a.el; });
-
-    // 氢画在 0.88 倍键长处，画布必须留出这段余量，否则最外圈的氢会被裁掉
     var margin = opts.hydrogens === false
       ? 0
       : Math.round(opts.bond * 0.88 + 10);
@@ -337,7 +335,7 @@
         '" x2="' + to.x.toFixed(1) + '" y2="' + to.y.toFixed(1) +
         '" stroke="#c3c9d6" stroke-width="2" stroke-dasharray="4 3"/>'
       );
-      // Pro 的环闭合键连回骨架上的 N，不是接 α-碳的那根，标出来免得看成断头线
+      // Pro 特判
       if (stub.to !== 'CA') {
         var label = stub.to.replace(/[^A-Za-z].*$/, '').charAt(0) || '?';
         parts.push(
@@ -376,12 +374,14 @@
       var p = placed.points[a.id];
       if (!p) return;
       var fill = ELEMENT_COLOR[a.el] || '#2b3242';
-      parts.push('<circle data-atom="' + a.id + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="9" fill="#ffffff" stroke="' + fill + '" stroke-width="1.4"/>');
+      parts.push('<circle data-atom="' + a.id + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="11" fill="#ffffff" stroke="' + fill + '" stroke-width="1.6"/>');
       parts.push(
-        '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 3.4).toFixed(1) +
-        '" text-anchor="middle" font-size="10" font-family="system-ui, sans-serif" fill="' + fill + '">' +
+        '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 3.8).toFixed(1) +
+        '" text-anchor="middle" font-size="11" font-family="system-ui, sans-serif" fill="' + fill + '">' +
         a.el + '</text>'
       );
+      // 为了方便点击，增加了透明的大点击区盖在上面
+      parts.push('<circle data-atom="' + a.id + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="19" fill="transparent" style="cursor:pointer"/>');
     });
 
     if (opts.hydrogens !== false) {

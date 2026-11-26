@@ -126,7 +126,7 @@ h2 {
 
 .scaffold {
   display: grid;
-  grid-template-columns: 150px 78px 150px;
+  grid-template-columns: 150px 150px 150px;
   grid-template-rows: 84px 84px minmax(170px, auto);
   gap: 10px;
   justify-content: center;
@@ -180,10 +180,31 @@ h2 {
 }
 
 .slot-r {
+  position: relative;
   grid-column: 1 / 4;
   grid-row: 3;
   align-items: stretch;
   padding: 6px;
+}
+
+.r-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.r-clear:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .r-canvas {

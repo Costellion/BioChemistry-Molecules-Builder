@@ -10,7 +10,7 @@
 
 <header>
   <h1>氨基酸分子拼装</h1>
-  <p class="subtitle">把左边的积木拖到骨架的空位上，点一下已放入的积木可以取下。</p>
+  <p class="subtitle">把左边的基团/原子拖到骨架的空位上，点一下可以取下。</p>
 </header>
 
 <main>
@@ -28,6 +28,7 @@
       <div class="slot" data-slot="hydrogen" data-name="氢" data-drop-target="slot"></div>
       <div class="slot slot-r" data-slot="sideChain" data-name="R 基" data-drop-target="slot">
         <div class="r-canvas" id="r-canvas"></div>
+        <button class="r-clear" id="r-clear" type="button" hidden>清空</button>
       </div>
     </div>
     <div class="structure" id="structure"></div>

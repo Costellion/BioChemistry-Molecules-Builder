@@ -18,7 +18,7 @@
     CODE_MAP[global.APP.Canonical.code(global.APP.Graph.build(aa))] = aa;
   });
 
-  var state = { amino: null, carboxyl: null, hydrogen: null, sideChain: null };
+  var state = { amino: null, carboxyl: null, hydrogen: null, sideChain: null, side: null };
 
   function say(text) {
     var out = document.getElementById('message');
@@ -26,8 +26,36 @@
   }
 
   function slotName(slot) {
+    if (slot.getAttribute('data-name')) return slot.getAttribute('data-name');
     var hint = slot.querySelector('.slot-hint');
     return hint ? hint.textContent.trim() : '槽位';
+  }
+
+  // R 槽不再放文字积木，改成把侧链图渲染成 SVG
+  function renderSide() {
+    var box = document.getElementById('r-canvas');
+    if (!box) return;
+
+    var side = state.side;
+    if (!side || !side.atoms.length) {
+      box.innerHTML = '<p class="r-empty">把原子拖到这里<br>再用点击把它们连起来</p>';
+      return;
+    }
+
+    var graph = {
+      atoms: side.atoms.map(function (a) { return { id: a.id, el: a.el }; }),
+      bonds: side.bonds.map(function (b) { return { a: b.a, b: b.b, order: b.order }; })
+    };
+
+    box.innerHTML = global.APP.Render.markup(graph, {
+      bond: 34,
+      padding: 14,
+      root: side.root,
+      direction: { x: 0, y: 1 },
+      // 编辑区不画氢：一个甲基就要多三个圆，画布里会挤成一团。
+      // 氢留到判定通过后的教材原图里去呈现。
+      hydrogens: false
+    });
   }
 
   function createChip(item) {
@@ -91,6 +119,18 @@
     }
 
     var key = chip.getAttribute('data-key');
+
+    if (slotId === 'sideChain') {
+      var sideRecord = DATA.aminoAcids.filter(function (a) { return a.id === key; })[0];
+      if (!sideRecord) return false;
+      state.sideChain = key;
+      state.side = global.APP.Graph.sideFromRecord(sideRecord);
+      slot.classList.add('is-occupied');
+      renderSide();
+      refresh(slotName(slot));
+      return true;
+    }
+
     var placed = createChip({
       kind: chip.getAttribute('data-kind'),
       slot: key,
@@ -112,6 +152,16 @@
   function bindSlot(slot) {
     slot.addEventListener('click', function () {
       if (!slot.classList.contains('is-occupied')) return;
+
+      if (slot.getAttribute('data-slot') === 'sideChain') {
+        state.sideChain = null;
+        state.side = null;
+        slot.classList.remove('is-occupied');
+        renderSide();
+        refresh(null);
+        return;
+      }
+
       var placed = slot.querySelector('.chip');
       if (!placed) return;
       slot.removeChild(placed);
@@ -237,16 +287,16 @@
       return;
     }
 
-    var record = DATA.aminoAcids.filter(function (a) { return a.id === state.sideChain; })[0];
-    if (!record) return;
-
-    var graph = global.APP.Graph.build(record);
+    // 5c：整图由骨架 + 侧链图装配而来，手拼和现成数据走同一条通路
+    var graph = global.APP.Graph.assemble(state.side);
     var code = global.APP.Canonical.code(graph);
     var matched = CODE_MAP[code];
 
     var target = document.getElementById('structure');
     if (target) {
-      target.innerHTML = '<img class="figure" src="img/' + record.id + '.png" alt="' + record.zh + '的结构式">';
+      target.innerHTML = matched
+        ? '<img class="figure" src="img/' + matched.id + '.png" alt="' + matched.zh + '的结构式">'
+        : '';
     }
 
     if (matched) {
@@ -265,6 +315,7 @@
   function start() {
     buildPalette();
     bindModal();
+    renderSide();
 
     var slots = document.querySelectorAll('[data-drop-target]');
     Array.prototype.forEach.call(slots, function (slot) {
@@ -278,10 +329,20 @@
 
   global.APP.App = {
     assemble: function (id) {
+      var record = DATA.aminoAcids.filter(function (a) { return a.id === id; })[0];
       state.amino = 'amino';
       state.carboxyl = 'carboxyl';
       state.hydrogen = 'hydrogen';
-      state.sideChain = id;
+      state.sideChain = record ? id : null;
+      state.side = record ? global.APP.Graph.sideFromRecord(record) : null;
+
+      var slot = document.querySelector('[data-slot="sideChain"]');
+      if (slot) {
+        if (record) slot.classList.add('is-occupied');
+        else slot.classList.remove('is-occupied');
+      }
+
+      renderSide();
       refresh(null);
     }
   };

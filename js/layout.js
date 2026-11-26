@@ -267,12 +267,16 @@
         queue.push({ id: next, from: 'CA', dir: { x: 0, y: 1 } });
       });
     } else {
-      var root = ids.filter(function (id) {
-        return !ringSet[id] && adj[id].length === 1;
-      })[0] || ids[0];
+      // 侧链图：从指定的根原子开始，默认朝下长（和教材里 R 基在 Cα 下方一致）
+      var root = (opts.root && known[opts.root])
+        ? opts.root
+        : (ids.filter(function (id) {
+          return !ringSet[id] && adj[id].length === 1;
+        })[0] || ids[0]);
+      var heading = opts.direction || { x: 0, y: 1 };
       remember(root, { x: 0, y: 0 });
       adj[root].forEach(function (next) {
-        queue.push({ id: next, from: root, dir: { x: 1, y: 0 } });
+        queue.push({ id: next, from: root, dir: heading });
       });
     }
 

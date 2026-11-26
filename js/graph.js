@@ -123,6 +123,78 @@
     return graph;
   }
 
+  // ---- 5c：用户自拼的侧链图 ----
+  // side = { atoms: [{id, el}], bonds: [{a, b, order}], root: 接到 CA 的那个原子 }
+  // 与整图分开存，是为了让"编辑中的侧链"和"已装配的分子"各管各的。
+
+  function assemble(side) {
+    var data = global.APP.DATA;
+    var graph = {
+      atoms: copyAtoms(data.scaffold.atoms),
+      bonds: copyBonds(data.scaffold.bonds)
+    };
+    if (!side || !side.atoms.length) return graph;
+
+    graph.atoms = graph.atoms.concat(copyAtoms(side.atoms));
+    graph.bonds = graph.bonds.concat(copyBonds(side.bonds));
+    if (side.root) {
+      graph.bonds.push({ a: 'CA', b: side.root, order: 1 });
+    }
+    return graph;
+  }
+
+  // 把数据里的某条氨基酸记录转成侧链图；脯氨酸的 CD-N 指向骨架，转不了，返回 representable=false
+  function sideFromRecord(record) {
+    var known = {};
+    record.frag.atoms.forEach(function (a) { known[a.id] = true; });
+
+    var side = {
+      atoms: record.frag.atoms.map(function (a) { return { id: a.id, el: a.el }; }),
+      bonds: [],
+      root: null,
+      representable: true
+    };
+
+    record.frag.bonds.forEach(function (b) {
+      if (known[b.a] && known[b.b]) {
+        side.bonds.push({ a: b.a, b: b.b, order: b.order });
+      } else if (b.a === 'CA' || b.b === 'CA') {
+        side.root = b.a === 'CA' ? b.b : b.a;
+      } else {
+        // 连到骨架其它原子（Pro 的 CD-N），独立侧链图表达不了
+        side.representable = false;
+      }
+    });
+
+    if (!side.root) side.representable = false;
+    return side;
+  }
+
+  // 侧链图里有没有"没连到根上的孤儿原子"
+  function sideConnected(side) {
+    if (!side || !side.atoms.length) return false;
+    var neighbours = {};
+    side.atoms.forEach(function (a) { neighbours[a.id] = []; });
+    side.bonds.forEach(function (b) {
+      if (neighbours[b.a]) neighbours[b.a].push(b.b);
+      if (neighbours[b.b]) neighbours[b.b].push(b.a);
+    });
+
+    var seen = {};
+    var stack = [side.root];
+    seen[side.root] = true;
+    while (stack.length) {
+      var id = stack.pop();
+      (neighbours[id] || []).forEach(function (next) {
+        if (!seen[next]) {
+          seen[next] = true;
+          stack.push(next);
+        }
+      });
+    }
+    return Object.keys(seen).length === side.atoms.length;
+  }
+
   global.APP = global.APP || {};
   global.APP.Graph = {
     VALENCE: VALENCE,
@@ -132,7 +204,10 @@
     validate: validate,
     formula: formula,
     degrees: degrees,
-    build: build
+    build: build,
+    assemble: assemble,
+    sideFromRecord: sideFromRecord,
+    sideConnected: sideConnected
   };
 
 })(window);

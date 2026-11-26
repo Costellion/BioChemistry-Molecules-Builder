@@ -6,7 +6,10 @@
     padding: 22,
     iterations: 420,
     seed: 17,
-    stub: 26
+    stub: 26,
+    hydrogens: true,
+    root: null,
+    direction: null
   };
 
   var ELEMENT_COLOR = {

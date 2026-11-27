@@ -87,7 +87,7 @@
     if (clear) clear.hidden = !(side && side.atoms.length);
 
     if (!side || !side.atoms.length) {
-      box.innerHTML = '<p class="r-empty">把原子拖到这里<br>再用点击把它们连起来</p>';
+      box.innerHTML = '<p class="r-empty">把原子拖到这里<br>点击两个原子连键<br>Shift + 点击可指定接入 α-碳的原子</p>';
       return;
     }
 
@@ -112,7 +112,7 @@
       node.style.cursor = 'pointer';
       node.addEventListener('click', function (event) {
         event.stopPropagation();
-        onAtomClick(id);
+        onAtomClick(id, event);
       });
       node.addEventListener('dblclick', function (event) {
         event.stopPropagation();
@@ -129,6 +129,15 @@
         toggleBond(node.getAttribute('data-bond'));
       });
     });
+
+    // 接入 α-碳的那个原子用琥珀色标出来
+    if (side.root) {
+      Array.prototype.forEach.call(box.querySelectorAll('circle[data-atom="' + side.root + '"]'), function (node) {
+        if (node.getAttribute('fill') === 'transparent') return;
+        node.setAttribute('stroke', '#c08a1e');
+        node.setAttribute('stroke-width', '2.4');
+      });
+    }
 
     if (state.selected) {
       var picked = box.querySelector('circle[data-atom="' + state.selected + '"]');
@@ -184,8 +193,19 @@
     })[0] || null;
   }
 
-  function onAtomClick(id) {
+  function onAtomClick(id, event) {
     if (!state.side) return;
+
+    // Shift + 点击：把这个原子设为接入 α-碳的那个原子。
+    // 默认是第一个放下的东西，但先放环块时它会被误当成接入点，所以需要能手动改。
+    if (event && event.shiftKey) {
+      state.side.root = id;
+      state.selected = null;
+      renderSide();
+      refresh(null);
+      say('已指定接入 α-碳的原子');
+      return;
+    }
 
     if (!state.selected) {
       state.selected = id;

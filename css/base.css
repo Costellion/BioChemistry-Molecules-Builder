@@ -68,7 +68,7 @@ main {
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr) 240px;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
   padding: 14px 26px 26px;
 }
 
@@ -184,10 +184,17 @@ h2 {
 
 /* ---- 骨架 ---- */
 
+/* 画布撑满整列高度，多出来的空间留给 R 基那块，正好扩大作画区域 */
+#canvas {
+  display: flex;
+  flex-direction: column;
+}
+
 .scaffold {
+  flex: 1;
   display: grid;
   grid-template-columns: 150px 150px 150px;
-  grid-template-rows: 84px 84px minmax(170px, auto);
+  grid-template-rows: 84px 84px minmax(170px, 1fr);
   gap: 10px;
   justify-content: center;
   max-width: 560px;
@@ -356,9 +363,17 @@ footer {
   color: #9aa3b2;
 }
 
+/* 积木面板按内容自然撑高，不再内部滚动；整页滚动由 body 负责 */
 #palette {
-  max-height: 640px;
-  overflow-y: auto;
+  min-height: 100%;
+}
+
+/* 视口特别矮时才退回内部滚动，避免面板高到看不见底 */
+@media (max-height: 720px) {
+  #palette {
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+  }
 }
 
 .structure {

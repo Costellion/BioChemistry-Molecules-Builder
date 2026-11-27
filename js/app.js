@@ -5,7 +5,7 @@
 
   var atomSeq = 0;
 
-  // 环块：一次插入多个原子和多根键，内部键不可改
+  // 环：一次插入多个原子和多根键，内部键不可改
   var RINGS = [
     {
       kind: 'ring',
@@ -78,7 +78,6 @@
     return hint ? hint.textContent.trim() : '槽位';
   }
 
-  // R 槽不再放文字积木，改成把侧链图渲染成 SVG
   function renderSide() {
     var box = document.getElementById('r-canvas');
     if (!box) return;
